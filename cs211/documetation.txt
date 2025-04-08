@@ -1,0 +1,183 @@
+const INT_LIT = 10;
+const IDENT = 11;
+const ASSIGN_OP = 20;
+const ADD_OP = 21;
+const SUB_OP = 22;
+const MULT_OP = 23;
+const DIV_OP = 24;
+const LEFT_PAREN = 25;
+const RIGHT_PAREN = 26;
+const UNKNOWN = 99;
+const EOF = -1;
+
+const LETTER = 0;
+const DIGIT = 1;
+const UNKNOWN_CHAR = 99;
+
+let charClass;
+let lexeme = [];
+let nextChar;
+let lexLen = 0;
+let token;
+let nextToken;
+let inFp;
+
+const tokenNameMap = new Map([
+  [INT_LIT, "INT_LIT"],
+  [IDENT, "IDENT"],
+  [ASSIGN_OP, "ASSIGN_OP"],
+  [ADD_OP, "ADD_OP"],
+  [SUB_OP, "SUB_OP"],
+  [MULT_OP, "MULT_OP"],
+  [DIV_OP, "DIV_OP"],
+  [LEFT_PAREN, "LEFT_PAREN"],
+  [RIGHT_PAREN, "RIGHT_PAREN"],
+  [UNKNOWN, "UNKNOWN"],
+  [EOF, "EOF"]
+]);
+
+function getTokenName(code) {
+  return tokenNameMap.get(code) || code.toString();
+}
+
+function isAlpha(c) {
+  return /^[a-zA-Z]$/.test(c);
+}
+
+function isDigit(c) {
+  return /^[0-9]$/.test(c);
+}
+
+function isSpace(c) {
+  return /\s/.test(c);
+}
+
+function processChar() {
+  if (lexLen <= 98) {
+    lexeme[lexLen++] = nextChar;
+    lexeme[lexLen] = '\0';
+  } else {
+    console.error("Error - lexeme is too long");
+  }
+}
+
+function fetchChar() {
+  if (inFp && inFp.position < inFp.data.length) {
+    nextChar = inFp.data[inFp.position++];
+    if (isAlpha(nextChar)) {
+      charClass = LETTER;
+    } else if (isDigit(nextChar)) {
+      charClass = DIGIT;
+    } else {
+      charClass = UNKNOWN_CHAR;
+    }
+  } else {
+    charClass = EOF;
+    nextChar = 'EOF';
+  }
+}
+
+function skipWhitespace() {
+  while (isSpace(nextChar)) {
+    fetchChar();
+  }
+}
+
+function identifySymbol(ch) {
+  processChar();
+  switch (ch) {
+    case '(':
+      nextToken = LEFT_PAREN;
+      break;
+    case ')':
+      nextToken = RIGHT_PAREN;
+      break;
+    case '+':
+      nextToken = ADD_OP;
+      break;
+    case '-':
+      nextToken = SUB_OP;
+      break;
+    case '*':
+      nextToken = MULT_OP;
+      break;
+    case '/':
+      nextToken = DIV_OP;
+      break;
+    case '=':
+      nextToken = ASSIGN_OP;
+      break;
+    default:
+      nextToken = UNKNOWN;
+      break;
+  }
+  return nextToken;
+}
+
+function analyzeLexeme() {
+  lexLen = 0;
+  skipWhitespace();
+
+  switch (charClass) {
+    case LETTER:
+      processChar();
+      fetchChar();
+      while (charClass === LETTER || charClass === DIGIT) {
+        processChar();
+        fetchChar();
+      }
+      nextToken = IDENT;
+      break;
+    case DIGIT:
+      processChar();
+      fetchChar();
+      while (charClass === DIGIT) {
+        processChar();
+        fetchChar();
+      }
+      nextToken = INT_LIT;
+      break;
+    case UNKNOWN_CHAR:
+      identifySymbol(nextChar);
+      fetchChar();
+      break;
+    case EOF:
+      nextToken = EOF;
+      lexeme[0] = 'E';
+      lexeme[1] = 'O';
+      lexeme[2] = 'F';
+      lexeme[3] = '\0';
+      lexLen = 3;
+      break;
+  }
+
+  const lexText = lexeme.slice(0, lexLen).join('').replace('\0', '');
+  console.log(`Next token is: ${nextToken} (${getTokenName(nextToken)}), Next lexeme is ${lexText}`);
+  return nextToken;
+}
+
+function executeAnalysis(inputText) {
+  lexeme = Array(100).fill('');
+  lexLen = 0;
+  nextChar = '';
+  inFp = { data: inputText, position: 0 };
+  fetchChar();
+  do {
+    nextToken = analyzeLexeme();
+  } while (nextToken !== EOF);
+}
+
+function runTestCases() {
+  console.log("LEXICAL ANALYZER TEST");
+  console.log("=====================");
+  
+  console.log("\nTesting expression: \"(sum + 47) / total\"");
+  executeAnalysis("(sum + 47) / total");
+  
+  console.log("\nTesting expression: \"x = y * (z - 5)\"");
+  executeAnalysis("x = y * (z - 5)");
+  
+  console.log("\nAnalysis complete");
+}
+
+runTestCases();
